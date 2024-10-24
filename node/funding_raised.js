@@ -1,121 +1,81 @@
-const parseCsvSync = require('csv-parse/lib/sync');
-const fs = require('fs');
-const path = require('path');
+const parseCsvSync = require("csv-parse/lib/sync");
+const fs = require("fs");
+const path = require("path");
+
+const ROW_MATRIX = {
+  permalink: 0,
+  company_name: 1,
+  number_employees: 2,
+  category: 3,
+  city: 4,
+  state: 5,
+  funded_date: 6,
+  raised_amount: 7,
+  raised_currency: 8,
+  round: 9,
+};
 
 class FundingRaised {
-  static where(options = {}) {
-    const funding_file = 'startup_funding.csv';
-    const file_data = fs.readFileSync(path.join(__dirname, '..', funding_file)).toString();
-    let csv_data = parseCsvSync(file_data);
+  static loadCSVData(file) {
+    const filePath = path.join(__dirname, "..", file);
+    const fileData = fs.readFileSync(filePath).toString();
+    return parseCsvSync(fileData);
+  }
 
-    const funding_data = [];
+  static mapRowToObject(row) {
+    return {
+      permalink: row[ROW_MATRIX.permalink],
+      company_name: row[ROW_MATRIX.company_name],
+      number_employees: row[ROW_MATRIX.number_employees],
+      category: row[ROW_MATRIX.category],
+      city: row[ROW_MATRIX.city],
+      state: row[ROW_MATRIX.state],
+      funded_date: row[ROW_MATRIX.funded_date],
+      raised_amount: row[ROW_MATRIX.raised_amount],
+      raised_currency: row[ROW_MATRIX.raised_currency],
+      round: row[ROW_MATRIX.round],
+    };
+  }
 
-    if (options.company_name) {
-      csv_data = csv_data.filter(row => options.company_name == row[1]);
-    }
-
-    if (options.city) {
-      csv_data = csv_data.filter(row => options.city == row[4]);
-    }
-
-    if (options.state) {
-      csv_data = csv_data.filter(row => options.state == row[5]);
-    }
-
-    if (options.round) {
-      csv_data = csv_data.filter(row => options.round == row[9]);
-    }
-
-    csv_data.forEach((row) => {
-      const mapped = {};
-      mapped.permalink = row[0];
-      mapped.company_name = row[1];
-      mapped.number_employees = row[2];
-      mapped.category = row[3];
-      mapped.city = row[4];
-      mapped.state = row[5];
-      mapped.funded_date = row[6];
-      mapped.raised_amount = row[7];
-      mapped.raised_currency = row[8];
-      mapped.round = row[9];
-      funding_data.push(mapped);
+  static applyFilters(csvData, options) {
+    return csvData.filter((row) => {
+      return (
+        (!options.company_name ||
+          options.company_name === row[ROW_MATRIX.company_name]) &&
+        (!options.city || options.city === row[ROW_MATRIX.city]) &&
+        (!options.state || options.state === row[ROW_MATRIX.state]) &&
+        (!options.round || options.round === row[ROW_MATRIX.round])
+      );
     });
+  }
 
-    return funding_data;
+  static where(options = {}) {
+    const csvData = this.loadCSVData("startup_funding.csv");
+    const filteredData = this.applyFilters(csvData, options);
+
+    return filteredData.map(this.mapRowToObject);
   }
 
   static findBy(options = {}) {
-    const funding_file = 'startup_funding.csv';
-    const file_data = fs.readFileSync(path.join(__dirname, '..', funding_file)).toString();
-    let csv_data = parseCsvSync(file_data);
+    const csvData = this.loadCSVData("startup_funding.csv");
+    const filteredData = this.applyFilters(csvData, options);
 
-    if (options.company_name) {
-      csv_data = csv_data.filter(row => options.company_name == row[1]);
-      const row = csv_data[0];
-      const mapped = {};
-      mapped.permalink = row[0];
-      mapped.company_name = row[1];
-      mapped.number_employees = row[2];
-      mapped.category = row[3];
-      mapped.city = row[4];
-      mapped.state = row[5];
-      mapped.funded_date = row[6];
-      mapped.raised_amount = row[7];
-      mapped.raised_currency = row[8];
-      mapped.round = row[9];
-      return mapped;
+    if (filteredData.length > 0) {
+      return this.mapRowToObject(filteredData[0]);
     }
 
-    if (options.city) {
-      csv_data = csv_data.filter(row => options.city == row[4]);
-      const row = csv_data[0];
-      const mapped = {};
-      mapped.permalink = row[0];
-      mapped.company_name = row[1];
-      mapped.number_employees = row[2];
-      mapped.category = row[3];
-      mapped.city = row[4];
-      mapped.state = row[5];
-      mapped.funded_date = row[6];
-      mapped.raised_amount = row[7];
-      mapped.raised_currency = row[8];
-      mapped.round = row[9];
-      return mapped;
-    }
+    return null;
+  }
 
-    if (options.state) {
-      csv_data = csv_data.filter(row => options.state == row[5]);
-      const row = csv_data[0];
-      const mapped = {};
-      mapped.permalink = row[0];
-      mapped.company_name = row[1];
-      mapped.number_employees = row[2];
-      mapped.category = row[3];
-      mapped.city = row[4];
-      mapped.state = row[5];
-      mapped.funded_date = row[6];
-      mapped.raised_amount = row[7];
-      mapped.raised_currency = row[8];
-      mapped.round = row[9];
-      return mapped;
-    }
+  static async asyncWhere(options = {}) {
+    const csvData = this.loadCSVData("startup_funding.csv");
+    const filteredData = this.applyFilters(csvData, options);
 
-    if (options.round) {
-      csv_data = csv_data.filter(row => options.round == row[9]);
-      const row = csv_data[0];
-      const mapped = {};
-      mapped.permalink = row[0];
-      mapped.company_name = row[1];
-      mapped.number_employees = row[2];
-      mapped.category = row[3];
-      mapped.city = row[4];
-      mapped.state = row[5];
-      mapped.funded_date = row[6];
-      mapped.raised_amount = row[7];
-      mapped.raised_currency = row[8];
-      mapped.round = row[9];
-      return mapped;
-    }
+    return new Promise((resolve) => {
+      setTimeout(() => {
+        resolve(filteredData.map(this.mapRowToObject));
+      }, 1000);
+    });
   }
 }
 
